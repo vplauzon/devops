@@ -40,6 +40,38 @@
       "metadata": {
         "description": "Azure DevOps release definition ID of the second-project"
       }
+    },
+    "LogicApp_2Location": {
+      "type": "string",
+      "minLength": 1,
+      "allowedValues": [
+        "[resourceGroup().location]",
+        "eastasia",
+        "southeastasia",
+        "centralus",
+        "eastus",
+        "eastus2",
+        "westus",
+        "northcentralus",
+        "southcentralus",
+        "northeurope",
+        "westeurope",
+        "japanwest",
+        "japaneast",
+        "brazilsouth",
+        "australiaeast",
+        "australiasoutheast",
+        "southindia",
+        "centralindia",
+        "westindia",
+        "canadacentral",
+        "canadaeast",
+        "uksouth",
+        "ukwest",
+        "westcentralus",
+        "westus2"
+      ],
+      "defaultValue": "[resourceGroup().location]"
     }
   },
   "variables": {},
@@ -357,7 +389,7 @@
               "type": "Until",
               "expression": "@equals(body('grab-status')?['status'], '\"active\"')",
               "limit": {
-                "count": 60,
+                "count": 120,
                 "timeout": "PT1H"
               },
               "actions": {
@@ -377,7 +409,11 @@
                       "releaseId": "@body('grab-release-id')?['releaseId']"
                     }
                   },
-                  "runAfter": {}
+                  "runAfter": {
+                    "Delay": [
+                      "Succeeded"
+                    ]
+                  }
                 },
                 "grab-status": {
                   "type": "ParseJson",
@@ -397,6 +433,16 @@
                       "Succeeded"
                     ]
                   }
+                },
+                "Delay": {
+                  "type": "Wait",
+                  "inputs": {
+                    "interval": {
+                      "count": 20,
+                      "unit": "Second"
+                    }
+                  },
+                  "runAfter": {}
                 }
               },
               "runAfter": {
