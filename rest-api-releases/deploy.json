@@ -86,14 +86,14 @@
             },
             "create-url": {
               "type": "Compose",
-              "inputs": "https://vsrm.dev.azure.com/@{triggerBody()?['pat']}/@{triggerBody()?['project']}/_apis/release/releases?api-version=5.0-preview.8",
+              "inputs": "https://vsrm.dev.azure.com/@{triggerBody()?['organization']}/@{triggerBody()?['project']}/_apis/release/releases?api-version=5.0-preview.8",
               "runAfter": {
                 "pat-base64": [
                   "Succeeded"
                 ]
               }
             },
-            "Response": {
+            "Response-Success": {
               "type": "Response",
               "kind": "http",
               "inputs": {
@@ -124,6 +124,18 @@
               "runAfter": {
                 "HTTP": [
                   "Succeeded"
+                ]
+              }
+            },
+            "Response-Failure": {
+              "type": "Response",
+              "kind": "http",
+              "inputs": {
+                "statusCode": 500
+              },
+              "runAfter": {
+                "HTTP": [
+                  "Failed"
                 ]
               }
             }
