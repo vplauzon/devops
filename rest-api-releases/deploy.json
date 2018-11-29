@@ -2,6 +2,45 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "pat": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Azure DevOps PAT:  Personal Access Token"
+      }
+    },
+    "organization": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure DevOps organization:  the top-level namespace"
+      },
+      "minLength": 1
+    },
+    "top-project": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure DevOps project:  the top-project to release and to wait for before deploying the second-project"
+      },
+      "minLength": 1
+    },
+    "second-project": {
+      "type": "string",
+      "metadata": {
+        "description": "Azure DevOps project:  the second project to release once the top-project release is completed"
+      },
+      "minLength": 1
+    },
+    "top-project release definition ID": {
+      "type": "int",
+      "metadata": {
+        "description": "Azure DevOps release definition ID of the top-project"
+      }
+    },
+    "second-project release definition ID": {
+      "type": "int",
+      "metadata": {
+        "description": "Azure DevOps release definition ID of the second-project"
+      }
+    }
   },
   "variables": {},
   "resources": [
@@ -11,7 +50,8 @@
       "apiVersion": "2017-07-01",
       "location": "[resourceGroup().location]",
       "dependsOn": [],
-      "tags": {},
+      "tags": {
+      },
       "properties": {
         "definition": {
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
@@ -123,7 +163,71 @@
         },
         "parameters": {}
       }
+    },
+    {
+      "name": "create-release-orchestration",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2017-07-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+      ],
+      "tags": {
+      },
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "create-release": {
+              "inputs": {
+                "body": {
+                  "description": "sadfasdff",
+                  "organization": "asfd",
+                  "pat": "asdf",
+                  "project": "safd",
+                  "releaseDefinitionId": 12
+                },
+                "host": {
+                  "triggerName": "http-post-@{parameters('create-release-resource-id')}",
+                  "workflow": {
+                    "id": "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+                  }
+                }
+              },
+              "runAfter": {},
+              "type": "Workflow"
+            }
+          },
+          "parameters": {
+            "create-release-resource-id": {
+              "type": "string"
+            }
+          },
+          "triggers": {
+            "http-post": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {},
+                "method": "POST"
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {
+          "create-release-resource-id": {
+            "value": "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+          }
+        }
+      }
     }
   ],
-  "outputs": {}
+  "outputs": {
+    "create-release-resource-id": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+    }
+  }
 }
