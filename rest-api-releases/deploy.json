@@ -177,6 +177,131 @@
       }
     },
     {
+      "name": "get-release-status",
+      "type": "Microsoft.Logic/workflows",
+      "apiVersion": "2017-07-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [],
+      "tags": {
+      },
+      "properties": {
+        "definition": {
+          "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+          "actions": {
+            "HTTP": {
+              "type": "Http",
+              "inputs": {
+                "method": "GET",
+                "uri": "@{outputs('create-url')}",
+                "headers": {
+                  "Authorization": "Basic @{outputs('pat-base64')} "
+                }
+              },
+              "runAfter": {
+                "create-url": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "pat-base64": {
+              "type": "Compose",
+              "inputs": "@base64(concat(':', triggerBody()?['pat']))",
+              "runAfter": {}
+            },
+            "create-url": {
+              "type": "Compose",
+              "inputs": "https://vsrm.dev.azure.com/@{triggerBody()?['organization']}/@{triggerBody()?['project']}/_apis/release/releases/@{triggerBody()?['releaseId']}?api-version=5.0-preview.8",
+              "runAfter": {
+                "pat-base64": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Response-Success": {
+              "type": "Response",
+              "kind": "http",
+              "inputs": {
+                "statusCode": 200,
+                "body": "{\n  \"status\": \"@{body('parse-response')?['status']}\"\n}"
+              },
+              "runAfter": {
+                "parse-response": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "parse-response": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@body('HTTP')",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "runAfter": {
+                "HTTP": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Response-Failure": {
+              "type": "Response",
+              "kind": "http",
+              "inputs": {
+                "statusCode": 500
+              },
+              "runAfter": {
+                "HTTP": [
+                  "Failed"
+                ]
+              }
+            }
+          },
+          "parameters": {},
+          "triggers": {
+            "http-post": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pat": {
+                      "type": "string"
+                    },
+                    "organization": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "string"
+                    },
+                    "releaseId": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "method": "POST"
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
+        },
+        "parameters": {}
+      }
+    },
+    {
       "name": "create-release-orchestration",
       "type": "Microsoft.Logic/workflows",
       "apiVersion": "2017-07-01",
@@ -208,6 +333,77 @@
                 }
               },
               "runAfter": {}
+            },
+            "grab-release-id": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@body('create-release')",
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "releaseId": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              },
+              "runAfter": {
+                "create-release": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Until": {
+              "type": "Until",
+              "expression": "@equals(body('grab-status')?['status'], '\"active\"')",
+              "limit": {
+                "count": 60,
+                "timeout": "PT1H"
+              },
+              "actions": {
+                "get-release-status": {
+                  "type": "Workflow",
+                  "inputs": {
+                    "host": {
+                      "triggerName": "http-post",
+                      "workflow": {
+                        "id": "[resourceId('Microsoft.Logic/workflows', 'get-release-status')]"
+                      }
+                    },
+                    "body": {
+                      "organization": "@{parameters('organization')}",
+                      "pat": "@{parameters('pat')}",
+                      "project": "@{parameters('top-project')}",
+                      "releaseId": "@body('grab-release-id')?['releaseId']"
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "grab-status": {
+                  "type": "ParseJson",
+                  "inputs": {
+                    "content": "@body('get-release-status')",
+                    "schema": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {
+                    "get-release-status": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "runAfter": {
+                "grab-release-id": [
+                  "Succeeded"
+                ]
+              }
             }
           },
           "parameters": {
