@@ -2,59 +2,124 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "myappName": {
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 80,
-      "metadata": {
-        "description": "Name of the Logic App."
-      }
-    },
-    "myappLocation": {
-      "type": "string",
-      "defaultValue": "[resourceGroup().location]",
-      "allowedValues": [
-        "[resourceGroup().location]",
-        "australiaeast",
-        "australiasoutheast",
-        "brazilsouth",
-        "centralus",
-        "eastasia",
-        "eastus",
-        "eastus2",
-        "japaneast",
-        "japanwest",
-        "northcentralus",
-        "northeurope",
-        "southcentralus",
-        "southeastasia",
-        "westeurope",
-        "westus"
-      ],
-      "metadata": {
-        "description": "Location of the Logic App."
-      }
-    }
   },
   "variables": {},
   "resources": [
     {
-      "name": "[parameters('myappName')]",
+      "name": "create-release",
       "type": "Microsoft.Logic/workflows",
-      "location": "[parameters('myappLocation')]",
-      "apiVersion": "2016-06-01",
+      "apiVersion": "2017-07-01",
+      "location": "[resourceGroup().location]",
       "dependsOn": [],
-      "tags": {
-        "displayName": "myapp"
-      },
+      "tags": {},
       "properties": {
         "definition": {
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-          "contentVersion": "1.0.0.0",
-          "actions": {},
-          "outputs": {},
+          "actions": {
+            "HTTP": {
+              "type": "Http",
+              "inputs": {
+                "method": "POST",
+                "uri": "@{outputs('create-url')}",
+                "headers": {
+                  "Authorization": "Basic @{outputs('pat-base64')} "
+                },
+                "body": {
+                  "artifacts": [],
+                  "definitionId": "@triggerBody()?['releaseDefinitionId']",
+                  "description": "@triggerBody()?['description']",
+                  "isDraft": false,
+                  "manualEnvironments": null,
+                  "reason": "none"
+                }
+              },
+              "runAfter": {
+                "create-url": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "pat-base64": {
+              "type": "Compose",
+              "inputs": "@base64(concat(':', triggerBody()?['pat']))",
+              "runAfter": {}
+            },
+            "create-url": {
+              "type": "Compose",
+              "inputs": "https://vsrm.dev.azure.com/@{triggerBody()?['pat']}/@{triggerBody()?['project']}/_apis/release/releases?api-version=5.0-preview.8",
+              "runAfter": {
+                "pat-base64": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Response": {
+              "type": "Response",
+              "kind": "http",
+              "inputs": {
+                "statusCode": 200,
+                "body": {
+                  "releaseId": "@body('parse-response')?['id']"
+                }
+              },
+              "runAfter": {
+                "parse-response": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "parse-response": {
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@body('HTTP')",
+                "schema": {
+                  "properties": {
+                    "id": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "runAfter": {
+                "HTTP": [
+                  "Succeeded"
+                ]
+              }
+            }
+          },
           "parameters": {},
-          "triggers": {}
+          "triggers": {
+            "http-post": {
+              "type": "Request",
+              "kind": "Http",
+              "inputs": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pat": {
+                      "type": "string"
+                    },
+                    "organization": {
+                      "type": "string"
+                    },
+                    "project": {
+                      "type": "string"
+                    },
+                    "releaseDefinitionId": {
+                      "type": "integer"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "method": "POST"
+              }
+            }
+          },
+          "contentVersion": "1.0.0.0",
+          "outputs": {}
         },
         "parameters": {}
       }
