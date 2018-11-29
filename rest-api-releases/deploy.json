@@ -179,28 +179,37 @@
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
           "actions": {
             "create-release": {
+              "type": "Workflow",
               "inputs": {
-                "body": {
-                  "description": "sadfasdff",
-                  "organization": "asfd",
-                  "pat": "asdf",
-                  "project": "safd",
-                  "releaseDefinitionId": 12
-                },
                 "host": {
-                  "triggerName": "http-post-@{parameters('create-release-resource-id')}",
+                  "triggerName": "http-post",
                   "workflow": {
                     "id": "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
                   }
+                },
+                "body": {
+                  "description": "Create top project release",
+                  "organization": "@{parameters('organization')}",
+                  "pat": "@{parameters('pat')}",
+                  "project": "@{parameters('top-project')}",
+                  "releaseDefinitionId": "@{parameters('top-project-releaseDefinitionId')}"
                 }
               },
-              "runAfter": {},
-              "type": "Workflow"
+              "runAfter": {}
             }
           },
           "parameters": {
-            "create-release-resource-id": {
+            "organization": {
               "type": "string"
+            },
+            "pat": {
+              "type": "string"
+            },
+            "top-project": {
+              "type": "string"
+            },
+            "top-project-releaseDefinitionId": {
+              "type": "Int"
             }
           },
           "triggers": {
@@ -217,8 +226,17 @@
           "outputs": {}
         },
         "parameters": {
-          "create-release-resource-id": {
-            "value": "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+          "organization": {
+            "value": "[parameters('organization')]"
+          },
+          "pat": {
+            "value": "[parameters('pat')]"
+          },
+          "top-project": {
+            "value": "[parameters('top-project')]"
+          },
+          "top-project-releaseDefinitionId": {
+            "value": "[parameters('top-project release definition ID')]"
           }
         }
       }
