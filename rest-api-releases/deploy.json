@@ -40,38 +40,6 @@
       "metadata": {
         "description": "Azure DevOps release definition ID of the second-project"
       }
-    },
-    "LogicApp_2Location": {
-      "type": "string",
-      "minLength": 1,
-      "allowedValues": [
-        "[resourceGroup().location]",
-        "eastasia",
-        "southeastasia",
-        "centralus",
-        "eastus",
-        "eastus2",
-        "westus",
-        "northcentralus",
-        "southcentralus",
-        "northeurope",
-        "westeurope",
-        "japanwest",
-        "japaneast",
-        "brazilsouth",
-        "australiaeast",
-        "australiasoutheast",
-        "southindia",
-        "centralindia",
-        "westindia",
-        "canadacentral",
-        "canadaeast",
-        "uksouth",
-        "ukwest",
-        "westcentralus",
-        "westus2"
-      ],
-      "defaultValue": "[resourceGroup().location]"
     }
   },
   "variables": {},
@@ -131,16 +99,16 @@
               "inputs": {
                 "statusCode": 200,
                 "body": {
-                  "releaseId": "@body('parse-response')?['id']"
+                  "releaseId": "@body('parse-response-head')?['id']"
                 }
               },
               "runAfter": {
-                "parse-response": [
+                "parse-response-head": [
                   "Succeeded"
                 ]
               }
             },
-            "parse-response": {
+            "parse-response-head": {
               "type": "ParseJson",
               "inputs": {
                 "content": "@body('HTTP')",
@@ -254,15 +222,20 @@
               "kind": "http",
               "inputs": {
                 "statusCode": 200,
-                "body": "{\n  \"status\": \"@{body('parse-response')?['status']}\"\n}"
+                "body": {
+                  "id": "@body('parse-response-head')?['id']",
+                  "name": "@{body('parse-response-head')?['name']}",
+                  "status": "@{body('parse-response-head')?['status']}",
+                  "environments": "@body('parse-response-environments')"
+                }
               },
               "runAfter": {
-                "parse-response": [
+                "Compose": [
                   "Succeeded"
                 ]
               }
             },
-            "parse-response": {
+            "parse-response-head": {
               "type": "ParseJson",
               "inputs": {
                 "content": "@body('HTTP')",
@@ -296,6 +269,32 @@
               "runAfter": {
                 "HTTP": [
                   "Failed"
+                ]
+              }
+            },
+            "parse-response-environments": {
+              "type": "Select",
+              "inputs": {
+                "from": "@body('HTTP')['environments']",
+                "select": {
+                  "id": "@item().id",
+                  "name": "@item().name",
+                  "status": "@item().status",
+                  "rank": "@item().rank"
+                }
+              },
+              "runAfter": {
+                "parse-response-head": [
+                  "Succeeded"
+                ]
+              }
+            },
+            "Compose": {
+              "type": "Compose",
+              "inputs": "",
+              "runAfter": {
+                "parse-response-environments": [
+                  "Succeeded"
                 ]
               }
             }
@@ -339,7 +338,8 @@
       "apiVersion": "2017-07-01",
       "location": "[resourceGroup().location]",
       "dependsOn": [
-        "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+        "[resourceId('Microsoft.Logic/workflows', 'create-release')]",
+        "[resourceId('Microsoft.Logic/workflows', 'get-release-status')]"
       ],
       "tags": {
       },
@@ -409,11 +409,7 @@
                       "releaseId": "@body('grab-release-id')?['releaseId']"
                     }
                   },
-                  "runAfter": {
-                    "Delay": [
-                      "Succeeded"
-                    ]
-                  }
+                  "runAfter": {}
                 },
                 "grab-status": {
                   "type": "ParseJson",
@@ -429,7 +425,7 @@
                     }
                   },
                   "runAfter": {
-                    "get-release-status": [
+                    "Delay": [
                       "Succeeded"
                     ]
                   }
@@ -442,7 +438,11 @@
                       "unit": "Second"
                     }
                   },
-                  "runAfter": {}
+                  "runAfter": {
+                    "get-release-status": [
+                      "Succeeded"
+                    ]
+                  }
                 }
               },
               "runAfter": {
