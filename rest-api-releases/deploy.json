@@ -347,7 +347,7 @@
         "definition": {
           "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
           "actions": {
-            "create-release": {
+            "create-top-release": {
               "type": "Workflow",
               "inputs": {
                 "host": {
@@ -369,7 +369,7 @@
             "grab-release-id": {
               "type": "ParseJson",
               "inputs": {
-                "content": "@body('create-release')",
+                "content": "@body('create-top-release')",
                 "schema": {
                   "type": "object",
                   "properties": {
@@ -380,12 +380,12 @@
                 }
               },
               "runAfter": {
-                "create-release": [
+                "create-top-release": [
                   "Succeeded"
                 ]
               }
             },
-            "Until": {
+            "Until-Top-Release-Over": {
               "type": "Until",
               "expression": "@not(equals(outputs('grab-status'), 'inProgress'))",
               "limit": {
@@ -491,6 +491,72 @@
                   "Succeeded"
                 ]
               }
+            },
+            "if-top-project-succeeded": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@outputs('grab-status')",
+                      "succeeded"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "create-second-release": {
+                  "type": "Workflow",
+                  "inputs": {
+                    "host": {
+                      "triggerName": "http-post",
+                      "workflow": {
+                        "id": "[resourceId('Microsoft.Logic/workflows', 'create-release')]"
+                      }
+                    },
+                    "body": {
+                      "description": "Create second project release",
+                      "organization": "@{parameters('organization')}",
+                      "pat": "@{parameters('pat')}",
+                      "project": "@{parameters('second-project')}",
+                      "releaseDefinitionId": "@{parameters('second-project-releaseDefinitionId')}"
+                    }
+                  },
+                  "runAfter": {}
+                },
+                "Response-Success": {
+                  "type": "Response",
+                  "kind": "http",
+                  "inputs": {
+                    "statusCode": 200
+                  },
+                  "runAfter": {
+                    "create-second-release": [
+                      "Succeeded"
+                    ]
+                  }
+                }
+              },
+              "runAfter": {
+                "Until-Top-Release-Over": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Response-Failed-Top-Project": {
+                    "type": "Response",
+                    "kind": "http",
+                    "inputs": {
+                      "statusCode": 500,
+                      "body": {
+                        "message": "Failed to release top project"
+                      }
+                    },
+                    "runAfter": {}
+                  }
+                }
+              }
             }
           },
           "parameters": {
@@ -504,6 +570,12 @@
               "type": "string"
             },
             "top-project-releaseDefinitionId": {
+              "type": "Int"
+            },
+            "second-project": {
+              "type": "string"
+            },
+            "second-project-releaseDefinitionId": {
               "type": "Int"
             }
           },
@@ -532,6 +604,12 @@
           },
           "top-project-releaseDefinitionId": {
             "value": "[parameters('top-project release definition ID')]"
+          },
+          "second-project": {
+            "value": "[parameters('second-project')]"
+          },
+          "second-project-releaseDefinitionId": {
+            "value": "[parameters('second-project release definition ID')]"
           }
         }
       }
