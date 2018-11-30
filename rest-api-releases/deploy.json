@@ -387,7 +387,7 @@
             },
             "Until": {
               "type": "Until",
-              "expression": "@equals(body('grab-status')?['status'], '\"active\"')",
+              "expression": "@not(equals(outputs('grab-status'), 'inProgress'))",
               "limit": {
                 "count": 120,
                 "timeout": "PT1H"
@@ -409,23 +409,59 @@
                       "releaseId": "@body('grab-release-id')?['releaseId']"
                     }
                   },
-                  "runAfter": {}
+                  "runAfter": {
+                    "Delay": [
+                      "Succeeded"
+                    ]
+                  }
                 },
-                "grab-status": {
+                "parse-status": {
                   "type": "ParseJson",
                   "inputs": {
                     "content": "@body('get-release-status')",
                     "schema": {
                       "type": "object",
                       "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
                         "status": {
                           "type": "string"
+                        },
+                        "environments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "rank": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "status",
+                              "rank"
+                            ]
+                          }
                         }
                       }
                     }
                   },
                   "runAfter": {
-                    "Delay": [
+                    "get-release-status": [
                       "Succeeded"
                     ]
                   }
@@ -438,8 +474,13 @@
                       "unit": "Second"
                     }
                   },
+                  "runAfter": {}
+                },
+                "grab-status": {
+                  "type": "Compose",
+                  "inputs": "@body('parse-status')?['environments'][0]['status']",
                   "runAfter": {
-                    "get-release-status": [
+                    "parse-status": [
                       "Succeeded"
                     ]
                   }
