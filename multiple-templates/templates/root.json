@@ -1,0 +1,52 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "blobPrefix": {
+            "metadata": {
+                "description": "Prefix for blobs"
+            },
+            "type": "string"
+        },
+        "sas": {
+            "metadata": {
+                "description": "SAS token"
+            },
+            "type": "string"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "name": "vnet",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "templateLink": {
+                    "uri": "[concat(parameters('blobPrefix'), 'sub/vnet.json?', parameters('sas'))]"
+                },
+                "parameters": {
+                    "vnet-name": "myvnet"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2018-05-01",
+            "name": "ip",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "templateLink": {
+                    "uri": "[concat(parameters('blobPrefix'), 'sub/ip.json?', parameters('sas'))]"
+                }
+            }
+        }
+    ],
+    "outputs": {
+        "containers": {
+            "type": "int",
+            "value": 42
+        }
+    }
+}
