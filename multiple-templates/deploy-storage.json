@@ -29,13 +29,13 @@
         {
             "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
             "apiVersion": "2018-11-01",
-            "name": "[concat(parameters('storage-name'), '/deploy')]",
+            "name": "[concat(parameters('storage-name'), '/default/deploy')]",
             "location": "[resourceGroup().location]",
             "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storage-name'))]"
             ],
             "properties": {
-                "publicAccess": "Container"
+                "publicAccess": "None"
             },
             "resources": []
         }
