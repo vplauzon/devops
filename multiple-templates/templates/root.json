@@ -21,25 +21,27 @@
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "2018-05-01",
             "name": "vnet",
-            "location": "[resourceGroup().location]",
             "properties": {
                 "templateLink": {
                     "uri": "[concat(parameters('blobPrefix'), 'sub/vnet.json?', parameters('sas'))]"
                 },
                 "parameters": {
-                    "vnet-name": "myvnet"
-                }
+                    "vnet-name": {
+                        "value": "myvnet"
+                    }
+                },
+                "mode": "Incremental"
             }
         },
         {
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "2018-05-01",
             "name": "ip",
-            "location": "[resourceGroup().location]",
             "properties": {
                 "templateLink": {
                     "uri": "[concat(parameters('blobPrefix'), 'sub/ip.json?', parameters('sas'))]"
-                }
+                },
+                "mode": "Incremental"
             }
         }
     ],
